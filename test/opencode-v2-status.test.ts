@@ -171,6 +171,45 @@ it("exposes credential-free active and aggregate data for the Codex badge", asyn
 	expect(CodexStatusRpc.methods.status.output.parse(result)).toEqual(result);
 });
 
+it("does not expose stale active quota in the Codex badge", async () => {
+	const now = Date.now();
+	const fingerprint = createUsageAccountFingerprint({ refreshToken: "another-refresh" });
+	mocks.sharedSnapshot.mockResolvedValue({
+		source: "usage", fingerprint, fetchedAt: now - 60_000,
+		accountIndex: 2, accountCount: 2, planType: "plus",
+		limits: [{ label: "5h", usedPercent: 42, resetAtMs: now + 60_000 }],
+	});
+	mocks.freshSnapshot = false;
+	mocks.overview.mockResolvedValue(null);
+
+	const result = await readV2Status({ width: 80 });
+	expect(result.badge.planType).toBeUndefined();
+	expect(result.badge.primary).toBeUndefined();
+});
+
+it("does not expose stale pool overview quota in the Codex badge", async () => {
+	const now = Date.now();
+	const firstFingerprint = createUsageAccountFingerprint({ refreshToken: "first-secret" });
+	const secondFingerprint = createUsageAccountFingerprint({ refreshToken: "second-secret" });
+	mocks.accountStorage = { activeIndex: 1, accounts: [
+		{ refreshToken: "first-secret" },
+		{ refreshToken: "second-secret" },
+	] };
+	mocks.freshSnapshot = false;
+	mocks.overview.mockResolvedValue({ fetchedAt: now - 600_000, accounts: [
+		{ index: 1, fingerprint: firstFingerprint, limits: [
+			{ label: "5h", usedPercent: 80, resetAtMs: now + 120_000 },
+		] },
+		{ index: 2, fingerprint: secondFingerprint, limits: [
+			{ label: "5h", usedPercent: 42, resetAtMs: now + 60_000 },
+		] },
+	] });
+
+	const result = await readV2Status({ width: 80 });
+	expect(result.badge.primary).toBeUndefined();
+	expect(result.badge.aggregate).toBeUndefined();
+});
+
 it("omits unusable quota numbers from the Codex badge", async () => {
 	const now = Date.now();
 	mocks.sharedSnapshot.mockResolvedValue({

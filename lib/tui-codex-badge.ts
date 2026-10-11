@@ -127,7 +127,7 @@ function aggregateRow(
 	mutedColor: string,
 ): CodexBadgeRow | undefined {
 	const aggregate = badge.aggregate;
-	if (!aggregate || aggregate.accountCount <= 1 || aggregate.availableCount === 0) return undefined;
+	if (!aggregate || aggregate.accountCount <= 1 || aggregate.availableCount <= 1) return undefined;
 	const row: CodexBadgeRow = [{
 		text: `[${"All".padEnd(BODY_WIDTH)}] `,
 		color: mutedColor,

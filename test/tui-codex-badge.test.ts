@@ -35,6 +35,14 @@ describe("Codex usage badge formatting", () => {
 		expect(rows.map(rowText)).toEqual(["[Plus] 5h: 40% | weekly: 25%"]);
 	});
 
+	it("omits the aggregate when only one account has usable readings", () => {
+		const rows = formatCodexUsageBadge({
+			...badge,
+			aggregate: { ...badge.aggregate, accountCount: 3, availableCount: 1 },
+		}, 80, now);
+		expect(rows.map(rowText)).toEqual(["[Plus 2/2] 5h: 40% (-1h) | weekly: 25% (-1d)"]);
+	});
+
 	it("omits the badge below 32 columns", () => {
 		expect(formatCodexUsageBadge(badge, 31, now)).toEqual([]);
 	});

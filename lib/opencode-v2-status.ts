@@ -81,15 +81,16 @@ function badgeData(
 	overview: PoolOverview | null,
 ) {
 	const enabledAccountCount = pool?.accounts.filter((account) => account.enabled !== false).length ?? 0;
-	const ready = quota.type === "ready" ? quota : undefined;
-	const availableAccounts = (overview?.accounts ?? []).filter((account) =>
+	const ready = quota.type === "ready" && !quota.stale ? quota : undefined;
+	const freshOverview = overview && isFreshTuiQuotaSnapshot(overview) ? overview : null;
+	const availableAccounts = (freshOverview?.accounts ?? []).filter((account) =>
 		pool?.accounts.some((candidate, index) => candidate.enabled !== false && index + 1 === account.index),
 	);
 	const availableCount = availableAccounts.filter((account) =>
 		account.readFailedAt === undefined &&
 		(badgeWindow(account.limits, false) !== undefined || badgeWindow(account.limits, true) !== undefined),
 	).length;
-	const aggregate = enabledAccountCount > 1 ? {
+	const aggregate = enabledAccountCount > 1 && freshOverview ? {
 		accountCount: enabledAccountCount,
 		availableCount,
 		primary: aggregateBadgeWindow(availableAccounts, false),
