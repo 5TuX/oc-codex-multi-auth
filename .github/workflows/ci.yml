@@ -57,9 +57,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # Build must precede Test: dist/ is gitignored, and the standalone CLI
-      # tests load the compiled warm/limits runtime out of dist/.
-      - name: Build
+      # Compile before tests so the standalone CLI suite exercises output built
+      # from the current sources rather than relying on committed dist/ files.
+      - name: Compile
         run: npm run compile
 
       - name: Test
