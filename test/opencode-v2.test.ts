@@ -210,6 +210,59 @@ describe("V2 compatibility adapter", () => {
 		}
 	});
 
+	it.each(["doGenerate", "doStream"] as const)("emits strict:false for function tools that omit it so optional args stay optional (%s)", async (method) => {
+		const h = host();
+		const cleanup = await setupV2(h.context, mocks.runtime);
+		const captured: Record<string, unknown>[] = [];
+		const stop = new Error("captured request");
+		const sdk = createOpenAI({
+			apiKey: "test-key",
+			fetch: async (_input, init) => {
+				captured.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+				throw stop;
+			},
+		});
+		const languageEvent: AISDKHooks["language"] = { model: h.model, sdk };
+		await h.hooks.get("language")?.(languageEvent);
+		// Mirrors OpenCode's task tool: sessionID is optional because a fresh
+		// subagent has no session to continue.
+		const options: Parameters<ReturnType<typeof sdk.responses>["doGenerate"]>[0] = {
+			prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+			tools: [
+				{
+					type: "function",
+					name: "task",
+					description: "Launch a subagent",
+					inputSchema: {
+						type: "object",
+						properties: {
+							prompt: { type: "string" },
+							sessionID: { type: "string", description: "Existing subagent session to continue" },
+						},
+						required: ["prompt"],
+						additionalProperties: false,
+					},
+				},
+				{
+					type: "function",
+					name: "explicit_strict",
+					inputSchema: { type: "object", properties: {} },
+					strict: true,
+				},
+			],
+		};
+		try {
+			await expect(languageEvent.language![method](options)).rejects.toThrow("captured request");
+			expect(captured).toHaveLength(1);
+			const tools = captured[0]!.tools as Array<Record<string, unknown>>;
+			expect(tools.find((tool) => tool.name === "task")).toMatchObject({ strict: false });
+			expect(tools.find((tool) => tool.name === "explicit_strict")).toMatchObject({ strict: true });
+			expect(options.tools?.[0]).not.toHaveProperty("strict");
+		} finally {
+			await cleanup();
+		}
+	});
+
 	it("adapts automatic and pasted-code OAuth without invoking terminal-interactive setup", async () => {
 		const h = host();
 		const cleanup = await setupV2(h.context, mocks.runtime);
