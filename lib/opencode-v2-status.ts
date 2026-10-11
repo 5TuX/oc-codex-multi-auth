@@ -1,7 +1,7 @@
 import { getCodexTuiGlyphMode, getCodexTuiMaskEmail, getCodexTuiMaskEmailInQuotaDetails, getQuotaDisplay, getQuotaStatus, loadPluginConfig } from "./config.js";
 import { fetchTuiQuotaOverview, toQuotaOverviewAccounts } from "./tui-quota-overview.js";
 import { readTuiQuotaSnapshot, readTuiQuotaOverviewSnapshot, isFreshTuiQuotaSnapshot, TUI_QUOTA_OVERVIEW_CACHE_FILE } from "./tui-quota-cache.js";
-import { formatPromptStatusText, formatQuotaDetailsText, formatQuotaCreditsStatusLines, formatQuotaOverviewStatusLines, formatQuotaResetsStatusLines, type CompactQuotaStatus } from "./tui-status.js";
+import { formatPromptStatusText, formatQuotaDetailsText, formatQuotaCreditsStatusLines, formatQuotaOverviewStatusLines, formatQuotaResetsStatusLines, type CompactQuotaLimit, type CompactQuotaStatus } from "./tui-status.js";
 import { dirname, join } from "node:path";
 import { getStoragePath, loadAccounts } from "./storage.js";
 import { getCurrentProjectRoot } from "./storage/state.js";
@@ -13,6 +13,97 @@ import { sanitizeDisplayText } from "./ui/display-text.js";
 const OVERVIEW_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 type PoolOverview = Awaited<ReturnType<typeof fetchTuiQuotaOverview>>;
 const lastOverviewAttempt = new Map<string, { at: number; snapshot: PoolOverview }>();
+
+type BadgeWindow = {
+	label: string;
+	usedPercent?: number;
+	resetAtMs?: number;
+};
+
+function isWeeklyLimit(limit: CompactQuotaLimit): boolean {
+	return (typeof limit.windowMinutes === "number" && Math.abs(limit.windowMinutes - 10_080) < 30) ||
+		/^(weekly|7d|1w)$/i.test(limit.label.trim());
+}
+
+function badgeWindow(
+	limits: readonly CompactQuotaLimit[],
+	weekly: boolean,
+): BadgeWindow | undefined {
+	const limit = limits.find((candidate) => isWeeklyLimit(candidate) === weekly);
+	if (!limit) return undefined;
+	const label = sanitizeDisplayText(limit.label, { maxLength: 24 });
+	if (!label) return undefined;
+	const usedPercent = typeof limit.usedPercent === "number" && Number.isFinite(limit.usedPercent)
+		? Math.max(0, Math.min(100, limit.usedPercent))
+		: typeof limit.leftPercent === "number" && Number.isFinite(limit.leftPercent)
+			? Math.max(0, Math.min(100, 100 - limit.leftPercent))
+			: undefined;
+	const resetAtMs = typeof limit.resetAtMs === "number" && Number.isFinite(limit.resetAtMs)
+		? limit.resetAtMs
+		: undefined;
+	if (usedPercent === undefined && resetAtMs === undefined) return undefined;
+	return {
+		label,
+		...(usedPercent === undefined ? {} : { usedPercent }),
+		...(resetAtMs === undefined ? {} : { resetAtMs }),
+	};
+}
+
+function aggregateBadgeWindow(
+	accounts: NonNullable<PoolOverview>["accounts"],
+	weekly: boolean,
+): BadgeWindow | undefined {
+	const windows = accounts
+		.filter((account) => account.readFailedAt === undefined)
+		.map((account) => badgeWindow(account.limits, weekly))
+		.filter((window): window is BadgeWindow => window !== undefined);
+	if (windows.length === 0) return undefined;
+	const percentages = windows
+		.map((window) => window.usedPercent)
+		.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+	const resets = windows
+		.map((window) => window.resetAtMs)
+		.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+	const firstWindow = windows[0];
+	if (!firstWindow) return undefined;
+	return {
+		label: firstWindow.label,
+		...(percentages.length === 0 ? {} : {
+			usedPercent: Math.round(percentages.reduce((total, value) => total + value, 0) / percentages.length),
+		}),
+		...(resets.length === 0 ? {} : { resetAtMs: Math.min(...resets) }),
+	};
+}
+
+function badgeData(
+	quota: CompactQuotaStatus,
+	pool: Awaited<ReturnType<typeof loadAccounts>>,
+	overview: PoolOverview | null,
+) {
+	const enabledAccountCount = pool?.accounts.filter((account) => account.enabled !== false).length ?? 0;
+	const ready = quota.type === "ready" ? quota : undefined;
+	const availableAccounts = (overview?.accounts ?? []).filter((account) =>
+		pool?.accounts.some((candidate, index) => candidate.enabled !== false && index + 1 === account.index),
+	);
+	const aggregate = enabledAccountCount > 1 ? {
+		accountCount: enabledAccountCount,
+		availableCount: availableAccounts.filter((account) => account.readFailedAt === undefined && account.limits.length > 0).length,
+		primary: aggregateBadgeWindow(availableAccounts, false),
+		secondary: aggregateBadgeWindow(availableAccounts, true),
+	} : undefined;
+	return {
+		...(ready?.planType ? { planType: sanitizeDisplayText(ready.planType, { maxLength: 32 }) } : {}),
+		...(typeof ready?.accountIndex === "number" && Number.isInteger(ready.accountIndex) && ready.accountIndex >= 1
+			? { accountIndex: ready.accountIndex }
+			: {}),
+		accountCount: typeof ready?.accountCount === "number" && Number.isInteger(ready.accountCount) && ready.accountCount >= 0
+			? ready.accountCount
+			: enabledAccountCount,
+		primary: ready ? badgeWindow(ready.limits, false) : undefined,
+		secondary: ready ? badgeWindow(ready.limits, true) : undefined,
+		...(aggregate ? { aggregate } : {}),
+	};
+}
 
 /** Test hook: forget when each pool was last fetched. */
 export function resetV2StatusThrottle(): void {
@@ -59,15 +150,16 @@ export async function readV2Status({ width }: { width: number }) {
 	let quota: CompactQuotaStatus = snapshot && owned
 		? { ...snapshot, type: "ready", stale: !isFreshTuiQuotaSnapshot(snapshot) }
 		: { type: pool?.accounts.length ? "unavailable" : "missing" };
-	const wantsPool = status.screens.some((screen) => screen !== "active");
+	const wantsPool = status.screens.some((screen) => screen !== "active") || (pool?.accounts.length ?? 0) > 1;
 	const overview = pool?.accounts.length && (wantsPool || quota.type !== "ready" || quota.stale)
 		? await loadPoolOverview(join(dirname(getStoragePath()), TUI_QUOTA_OVERVIEW_CACHE_FILE))
 		: null;
-	const active = pool?.accounts[pool.activeIndex];
+	const activeIndex = servingIndex !== undefined && servingIndex >= 0 ? servingIndex : pool?.activeIndex;
+	const active = activeIndex === undefined ? undefined : pool?.accounts[activeIndex];
 	const usage = active && overview?.accounts.find((account) => account.fingerprint === createUsageAccountFingerprint(active));
 	if (usage && overview) {
 		quota = { type: "ready", limits: usage.limits, stale: !isFreshTuiQuotaSnapshot(overview),
-			source: "usage", fetchedAt: overview.fetchedAt, accountIndex: pool ? pool.activeIndex + 1 : undefined,
+			source: "usage", fetchedAt: overview.fetchedAt, accountIndex: activeIndex === undefined ? undefined : activeIndex + 1,
 			accountCount: pool?.accounts.length, accountEmail: active.email, accountLabel: active.accountLabel,
 			planType: usage.planType };
 	}
@@ -95,6 +187,7 @@ export async function readV2Status({ width }: { width: number }) {
 		: "";
 	return {
 		text,
+		badge: badgeData(quota, pool, overview),
 		glyphMode,
 		accountStorage: getCurrentProjectRoot() ? "project" as const : "global" as const,
 		accounts: (pool?.accounts ?? []).map((account, index) => ({
