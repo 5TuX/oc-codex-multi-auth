@@ -427,13 +427,14 @@ describe("clock audit", () => {
 			expect(parseQuotaResetAtMs(headers({ [`${P}-reset-at`]: "0" }), P, T0)).toBeUndefined();
 		});
 
-		it("AUDIT QUIRK: 'reset-at: -1' survives the \\d+ gate and Date.parse reads it as Jan 1 2001 (quota-windows.ts:135-138)", () => {
+		it("AUDIT QUIRK: 'reset-at: -1' survives the \\d+ gate and Date.parse reads it as Jan 1 2001 local time (quota-windows.ts:135-138)", () => {
 			// The numeric branch rejects "-1" (not all digits), so it falls into
-			// Date.parse — which leniently parses "-1" as a year/month fragment
-			// landing at 978278400000 (2001-01-01T00:00:00Z). Returned as a PAST
-			// stamp, then dropped by every future-gated consumer — harmless but
-			// surprising: a malformed header yields a 25-year-old "reset".
-			expect(parseQuotaResetAtMs(headers({ [`${P}-reset-at`]: "-1" }), P, T0)).toBe(978278400000);
+			// Date.parse — which leniently parses "-1" as Jan 1, 2001 in the local
+			// timezone. Compare with another local-time parse so the audit remains
+			// stable across developer machines and UTC CI. Returned as a PAST stamp,
+			// then dropped by every future-gated consumer — harmless but surprising:
+			// a malformed header yields a 25-year-old "reset".
+			expect(parseQuotaResetAtMs(headers({ [`${P}-reset-at`]: "-1" }), P, T0)).toBe(Date.parse("2001-01-01T00:00:00"));
 			const h = headers({
 				[`${P}-used-percent`]: "100",
 				[`${P}-window-minutes`]: "300",
