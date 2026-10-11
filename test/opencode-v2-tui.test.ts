@@ -15,18 +15,61 @@ vi.mock("solid-js", () => ({
 }));
 import { setupV2Tui } from "../lib/opencode-v2-tui.js";
 
+type RenderedElement = {
+	children?: string | RenderedElement[];
+	onSizeChange?: (this: { width: number }) => void;
+};
+
+const testBadge = {
+	planType: "plus",
+	accountIndex: 1,
+	accountCount: 2,
+	primary: { label: "5h", usedPercent: 60 },
+	secondary: { label: "weekly", usedPercent: 40 },
+};
+
+function renderedText(node: RenderedElement | null): string | null {
+	if (!node) return null;
+	node.onSizeChange?.call({ width: 100 });
+	const children = node.children;
+	if (typeof children === "string") return children;
+	return children?.map((child) => renderedText(child) ?? "").join("") ?? "";
+}
+
 afterEach(() => {
 	for (const cleanup of mocks.cleanups.splice(0)) cleanup();
 	vi.useRealTimers();
 });
 
+it("appends the custom Codex badge to home and session status slots", () => {
+	const placements: Array<{ append?: string; replace?: string }> = [];
+	const context = {
+		client: { rpc: vi.fn() },
+		data: { location: { default: () => ({ directory: "/tmp/opencode/project" }) } },
+		theme: { text: { base: "white" } },
+		ui: {
+			slot: (placement: { append?: string; replace?: string }) => {
+				placements.push(placement);
+				return vi.fn();
+			},
+			dialog: { alert: vi.fn(), confirm: vi.fn() },
+		},
+	} as unknown as Plugin.Context;
+	setupV2Tui(context);
+
+	expect(placements).toContainEqual(expect.objectContaining({ append: "home.footer.status" }));
+	expect(placements).toContainEqual(expect.objectContaining({ append: "prompt.footer.status" }));
+	expect(placements.every((placement) => placement.replace === undefined)).toBe(true);
+});
+
 describe("V2 accounts UI", () => {
 	it("exposes accounts without a mounted prompt and cleans up polling", async () => {
 		vi.useFakeTimers();
-		const slots = new Map<string, { render: (props: object) => { children: string } | null }>();
+		const slots = new Map<string, { render: (props: object) => RenderedElement | null }>();
 		const commands: Array<{ id: string; run: () => Promise<void> }> = [];
 		const status = vi.fn().mockResolvedValue({
 			text: "quota ready", details: "Quota details", showFor: "codex-models",
+			badge: testBadge,
 			accountStorage: "project",
 			accounts: [
 				{ index: 1, label: "First", active: true, enabled: true },
@@ -64,6 +107,7 @@ describe("V2 accounts UI", () => {
 		expect(alert.mock.calls[0]?.[0].message).toContain("CODEX_AUTH_PER_PROJECT_ACCOUNTS overrides this setting");
 		status.mockResolvedValueOnce({
 			text: "quota ready", details: "Quota details", showFor: "codex-models",
+			badge: testBadge,
 			accountStorage: "global", accounts: [
 				{ index: 1, label: "First", active: true, enabled: true },
 				{ index: 2, label: "Second", active: false, enabled: false },
@@ -74,12 +118,24 @@ describe("V2 accounts UI", () => {
 		expect(alert.mock.calls[1]?.[0].message).toContain("~/.opencode/openai-codex-auth-config.json");
 		expect(alert.mock.calls[1]?.[0].message).not.toContain("from this project directory");
 		// Hiding Codex quota for a different provider must not hide the account list.
-		expect(slots.get("prompt.footer.status")!.render({ sessionID: "test" })!.children).toBe("");
+		expect(renderedText(slots.get("prompt.footer.status")!.render({ sessionID: "test" }))).toBeNull();
 		messages.push({ type: "assistant", model: { providerID: "openai" } }, { type: "user" });
-		expect(slots.get("prompt.footer.status")!.render({ sessionID: "test" })!.children).toBe("quota ready");
+		expect(renderedText(slots.get("prompt.footer.status")!.render({ sessionID: "test" }))).toBe("[Plus 1/2] 5h: 60% | weekly: 40%");
+		const homeBadge = slots.get("home.footer.status")!.render({})!;
+		expect(renderedText(homeBadge)).toBe("[Plus 1/2] 5h: 60% | weekly: 40%");
+		status.mockResolvedValueOnce({
+			text: "quota ready", details: "Quota details", showFor: "codex-models",
+			badge: { ...testBadge, primary: { label: "5h", usedPercent: 75 } },
+			accountStorage: "global", accounts: [
+				{ index: 1, label: "First", active: true, enabled: true },
+				{ index: 2, label: "Second", active: false, enabled: false },
+			],
+		});
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(renderedText(homeBadge)).toContain("5h: 75%");
 		configuredProvider = "openai";
 		messages.push({ type: "assistant", model: { providerID: "anthropic" } });
-		expect(slots.get("prompt.footer.status")!.render({ sessionID: "test" })!.children).toBe("");
+		expect(renderedText(slots.get("prompt.footer.status")!.render({ sessionID: "test" }))).toBeNull();
 		expect(sidebar.children).toContain("First");
 		status.mockRejectedValue(new Error("offline"));
 		await vi.advanceTimersByTimeAsync(2000);
@@ -92,15 +148,16 @@ describe("V2 accounts UI", () => {
 		await vi.advanceTimersByTimeAsync(4000);
 		expect(status).toHaveBeenCalledTimes(calls);
 		dispose();
-		expect(unregister).toHaveBeenCalledTimes(3);
+		expect(unregister).toHaveBeenCalledTimes(4);
 	});
 
 	it("removes stored OpenAI OAuth connections on codex.logout, keeping the pool", async () => {
 		vi.useFakeTimers();
-		const slots = new Map<string, { render: (props: object) => { children: string } | null }>();
+		const slots = new Map<string, { render: (props: object) => RenderedElement | null }>();
 		const commands: Array<{ id: string; run: () => Promise<void> }> = [];
 		const status = vi.fn().mockResolvedValue({
 			text: "quota ready", details: "Quota details", showFor: "always",
+			badge: testBadge,
 			accountStorage: "project", accounts: [],
 		});
 		const alert = vi.fn();
@@ -145,15 +202,16 @@ describe("V2 accounts UI", () => {
 		}));
 	});
 
-	it("sanitizes RPC text and account labels, and honours the returned glyph mode", async () => {
+	it("sanitizes account labels and renders the returned Codex usage badge", async () => {
 		vi.useFakeTimers();
-		const slots = new Map<string, { render: (props: object) => { children: string } | null }>();
+		const slots = new Map<string, { render: (props: object) => RenderedElement | null }>();
 		const status = vi.fn().mockResolvedValue({
 			// Escape sequences and bidi marks must not reach the renderer; the
 			// newline in `text` is preserved (multi-line status is supported).
 			text: "quota\x1b[31m ready\nline two\u202e",
 			details: "details \x1bPq\x1b\\ here",
 			showFor: "always",
+			badge: testBadge,
 			accountStorage: "global",
 			glyphMode: "ascii",
 			accounts: [
@@ -177,14 +235,17 @@ describe("V2 accounts UI", () => {
 		expect(sidebar.children).toContain("* 1. Fi rst");
 		expect(sidebar.children).toContain("o 2. Second");
 		expect(sidebar.children).not.toContain("\x1b");
-		expect(slots.get("prompt.footer.status")!.render({})!.children).toBe("quota ready\nline two");
+		const footer = renderedText(slots.get("prompt.footer.status")!.render({}));
+		expect(footer).toBe("[Plus 1/2] 5h: 60% | weekly: 40%");
+		expect(footer).not.toContain("quota ready");
 	});
 
 	it("falls back to an 80-column budget when the renderer reports no width", async () => {
 		vi.useFakeTimers();
-		const slots = new Map<string, { render: (props: object) => { children: string } | null }>();
+		const slots = new Map<string, { render: (props: object) => RenderedElement | null }>();
 		const status = vi.fn().mockResolvedValue({
 			text: "quota ready", details: "d", showFor: "always",
+			badge: testBadge,
 			accountStorage: "global", accounts: [],
 		});
 		const context = {
@@ -203,10 +264,11 @@ describe("V2 accounts UI", () => {
 
 	it("aborts codex.logout when the user declines the confirmation", async () => {
 		vi.useFakeTimers();
-		const slots = new Map<string, { render: (props: object) => { children: string } | null }>();
+		const slots = new Map<string, { render: (props: object) => RenderedElement | null }>();
 		const commands: Array<{ id: string; run: () => Promise<void> }> = [];
 		const status = vi.fn().mockResolvedValue({
 			text: "quota ready", details: "Quota details", showFor: "always",
+			badge: testBadge,
 			accountStorage: "project", accounts: [],
 		});
 		const confirm = vi.fn().mockResolvedValue(false);

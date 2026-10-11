@@ -1,13 +1,14 @@
 import type { Plugin } from "@opencode/plugin/tui";
 import { createElement, spread } from "@opentui/solid";
 import { createSignal, onCleanup } from "solid-js";
-import { CodexStatusRpc } from "./opencode-v2-rpc.js";
+import { CodexStatusRpc, type CodexStatusBadge } from "./opencode-v2-rpc.js";
+import { renderCodexUsageBadge } from "./tui-codex-badge.js";
 import { sanitizeDisplayBlock, sanitizeDisplayText } from "./ui/display-text.js";
 import { resolveUiGlyphs } from "./ui/theme.js";
 
 /** Register quota and account views; return a disposer for the V2 TUI slots. */
 export function setupV2Tui(context: Plugin.Context) {
-	const [text, setText] = createSignal("");
+	const [badge, setBadge] = createSignal<CodexStatusBadge>({ accountCount: 0 });
 	const [accounts, setAccounts] = createSignal("Loading accounts…");
 	const [accountStorage, setAccountStorage] = createSignal<"project" | "global" | "unknown">("unknown");
 	const [showFor, setShowFor] = createSignal("always");
@@ -40,7 +41,7 @@ export function setupV2Tui(context: Plugin.Context) {
 					// strip escapes/controls before it reaches a rendered node. `auto`
 					// resolves against this TUI's environment, not the service's.
 					const glyphs = resolveUiGlyphs(result.glyphMode ?? "unicode");
-					setText(sanitizeDisplayBlock(result.text, { maxLength: 1024 }) ?? "");
+					setBadge(result.badge);
 					setShowFor(result.showFor);
 					setAccountStorage(result.accountStorage);
 					setAccounts(result.accounts.length ? result.accounts.map((account) =>
@@ -52,7 +53,7 @@ export function setupV2Tui(context: Plugin.Context) {
 						// No RPC result to take a glyph mode from — `auto` resolves
 						// against this TUI's own environment.
 						const fallback = resolveUiGlyphs("auto");
-						setText("limits ?");
+						setBadge({ accountCount: 0 });
 						setAccountStorage("unknown");
 						setAccounts(`Accounts unavailable ${fallback.emDash} retry shortly.`);
 						details = `Quota unavailable ${fallback.emDash} retry shortly.`;
@@ -142,26 +143,23 @@ export function setupV2Tui(context: Plugin.Context) {
 			return null;
 		},
 	}), context.ui.slot({
+		append: "home.footer.status",
+		render: () => renderCodexUsageBadge(badge, context.theme),
+	}), context.ui.slot({
 		append: "prompt.footer.status",
 		render: (props) => {
-			const element = createElement("text");
-			spread(element, {
-				get children() {
-					let providerID = props.sessionID ? context.data.session.get(props.sessionID)?.model?.providerID : undefined;
-					if (props.sessionID) {
-						const messages = context.data.session.message.list(props.sessionID) ?? [];
-						for (let index = messages.length - 1; index >= 0; index -= 1) {
-							const message = messages[index];
-							if (message?.type !== "assistant") continue;
-							providerID = message.model.providerID;
-							break;
-						}
-					}
-					return showFor() === "codex-models" && providerID && providerID !== "openai" ? "" : text();
-				},
-				get fg() { return context.theme.text.base; },
-			});
-			return element;
+			let providerID = props.sessionID ? context.data.session.get(props.sessionID)?.model?.providerID : undefined;
+			if (props.sessionID) {
+				const messages = context.data.session.message.list(props.sessionID) ?? [];
+				for (let index = messages.length - 1; index >= 0; index -= 1) {
+					const message = messages[index];
+					if (message?.type !== "assistant") continue;
+					providerID = message.model.providerID;
+					break;
+				}
+			}
+			if (showFor() === "codex-models" && providerID && providerID !== "openai") return null;
+			return renderCodexUsageBadge(badge, context.theme);
 		},
 	}), context.ui.slot({
 		append: "sidebar.content",
