@@ -1057,7 +1057,9 @@ describe("clock audit", () => {
 			}).then((v) => { outcome = v; settled = true; })
 				.catch((e) => { outcome = e; settled = true; });
 
-			await pumpUntilSettled(() => settled, 400, lockDir);
+			// The retry schedule is randomized and can exceed the default 100s
+			// fake-time pump budget; leave enough room for all 24 retries.
+			await pumpUntilSettled(() => settled, 900, lockDir);
 			expect(settled).toBe(true);
 			expect(acquired).toBe(false);
 			expect(outcome).toBeInstanceOf(StorageTransactionContentionError);
