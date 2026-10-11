@@ -15,9 +15,13 @@ describe("TUI status configuration reload", () => {
 	let configPath: string;
 	let read: TuiModule["readPromptStatusOptions"];
 	let same: TuiModule["samePromptStatusOptions"];
+	let lastConfigSize = 0;
 
 	const writeConfig = (config: unknown): void => {
-		writeFileSync(configPath, JSON.stringify(config));
+		const content = JSON.stringify(config);
+		const nextSize = Math.max(content.length, lastConfigSize + 1);
+		writeFileSync(configPath, content.padEnd(nextSize, " "));
+		lastConfigSize = nextSize;
 	};
 
 	// Imported ONCE, which is also what the behaviour under test requires: a
