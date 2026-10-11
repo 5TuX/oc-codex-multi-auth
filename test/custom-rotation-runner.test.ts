@@ -4,11 +4,17 @@ import { watch } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { runRotationPolicy } from "../lib/custom-rotation/runner.js";
+import { terminateRotationTree } from "../lib/custom-rotation/process.js";
 import { validateRotation } from "../lib/custom-rotation/validate.js";
 import { emptyRotationAccount } from "../lib/custom-rotation/observations.js";
 import { PluginConfigSchema } from "../lib/schemas.js";
 import { getRotationStrategy } from "../lib/config.js";
 import type { RotationInput } from "../lib/custom-rotation/contract.js";
+
+vi.mock("../lib/custom-rotation/process.js", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../lib/custom-rotation/process.js")>();
+	return { ...actual, terminateRotationTree: vi.fn(actual.terminateRotationTree) };
+});
 
 let directory: string;
 beforeEach(async () => { directory = await mkdtemp(join(tmpdir(), "rotation-runner-")); });
@@ -85,6 +91,18 @@ describe("bounded Node policy runner", () => {
 		finally { watcher.close(); }
 		// Then: the host settles through the real process surface.
 		expect(result.error).toBe(reason);
+	});
+	it("keeps a finished policy's result when teardown outlives the deadline", async () => {
+		// Model the ~150 ms Windows taskkill wait: the selection deadline used
+		// to stay armed through it and overwrite the completed result.
+		const real = vi.mocked(terminateRotationTree).getMockImplementation();
+		vi.mocked(terminateRotationTree).mockImplementationOnce(async (child) => {
+			await new Promise((resolve) => setTimeout(resolve, 2_000));
+			return real?.(child);
+		});
+		const module = await policy("export function select() { return 'a'; }");
+		const result = await runRotationPolicy(module, context, { timeoutMs: 1_000 });
+		expect(result).toEqual({ accountId: "a", error: null });
 	});
 	it("cancels a running child when the host signal aborts", async () => {
 		const module = await policy("export function select() { while (true) {} }");
