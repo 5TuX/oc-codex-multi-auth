@@ -18,6 +18,7 @@ import { setupV2Tui } from "../lib/opencode-v2-tui.js";
 type RenderedElement = {
 	children?: string | RenderedElement[];
 	onSizeChange?: (this: { width: number }) => void;
+	width?: number | string;
 };
 
 const testBadge = {
@@ -34,6 +35,13 @@ function renderedText(node: RenderedElement | null): string | null {
 	const children = node.children;
 	if (typeof children === "string") return children;
 	return children?.map((child) => renderedText(child) ?? "").join("") ?? "";
+}
+
+function initialRenderedText(node: RenderedElement | null): string | null {
+	if (!node) return null;
+	const children = node.children;
+	if (typeof children === "string") return children;
+	return children?.map(initialRenderedText).filter((text): text is string => text !== null).join("") ?? "";
 }
 
 afterEach(() => {
@@ -120,7 +128,10 @@ describe("V2 accounts UI", () => {
 		// Hiding Codex quota for a different provider must not hide the account list.
 		expect(renderedText(slots.get("prompt.footer.status")!.render({ sessionID: "test" }))).toBeNull();
 		messages.push({ type: "assistant", model: { providerID: "openai" } }, { type: "user" });
-		expect(renderedText(slots.get("prompt.footer.status")!.render({ sessionID: "test" }))).toBe("[Plus 1/2] 5h: 60% | weekly: 40%");
+		const sessionBadge = slots.get("prompt.footer.status")!.render({ sessionID: "test" })!;
+		expect(sessionBadge.width).not.toBe("100%");
+		expect(initialRenderedText(sessionBadge)).toBe("[Plus 1/2] 5h: 60% | weekly: 40%");
+		expect(renderedText(sessionBadge)).toBe("[Plus 1/2] 5h: 60% | weekly: 40%");
 		const homeBadge = slots.get("home.footer.status")!.render({})!;
 		expect(renderedText(homeBadge)).toBe("[Plus 1/2] 5h: 60% | weekly: 40%");
 		status.mockResolvedValueOnce({

@@ -2,6 +2,7 @@ import { createElement, spread } from "@opentui/solid";
 import { createSignal } from "solid-js";
 import { displayWidth, sanitizeDisplayText } from "./ui/display-text.js";
 const BODY_WIDTH = 8;
+const INITIAL_LAYOUT_WIDTH = 120;
 const JET_STOPS = [
     { at: 0, color: [0, 0, 1] },
     { at: 0.25, color: [0, 1, 1] },
@@ -143,13 +144,12 @@ export function formatCodexUsageBadge(badge, width, now = Date.now(), mutedColor
     const compactAggregate = aggregateRow(badge, false, now, mutedColor);
     return compactAggregate && fits(compactAggregate, width) ? [active, compactAggregate] : [active];
 }
-/** Render into a flex-shrinking slot and choose compact mode from its measured width. */
+/** Render into a flex-shrinking, content-sized slot and compact to its measured width. */
 export function renderCodexUsageBadge(badge, theme) {
-    const [width, setWidth] = createSignal(0);
+    const [width, setWidth] = createSignal(INITIAL_LAYOUT_WIDTH);
     const mutedColor = theme.text?.muted ?? theme.textMuted ?? theme.text?.base ?? "#808080";
     const root = createElement("box");
     spread(root, {
-        width: "100%",
         flexDirection: "column",
         flexShrink: 1,
         minWidth: 0,

@@ -14,6 +14,7 @@ export type CodexBadgeRow = CodexBadgeSegment[];
 
 type Rgb = [number, number, number];
 const BODY_WIDTH = 8;
+const INITIAL_LAYOUT_WIDTH = 120;
 const JET_STOPS: Array<{ at: number; color: Rgb }> = [
 	{ at: 0, color: [0, 0, 1] },
 	{ at: 0.25, color: [0, 1, 1] },
@@ -171,16 +172,15 @@ export function formatCodexUsageBadge(
 	return compactAggregate && fits(compactAggregate, width) ? [active, compactAggregate] : [active];
 }
 
-/** Render into a flex-shrinking slot and choose compact mode from its measured width. */
+/** Render into a flex-shrinking, content-sized slot and compact to its measured width. */
 export function renderCodexUsageBadge(
 	badge: () => CodexStatusBadge,
 	theme: Plugin.Context["theme"],
 ) {
-	const [width, setWidth] = createSignal(0);
+	const [width, setWidth] = createSignal(INITIAL_LAYOUT_WIDTH);
 	const mutedColor = theme.text?.muted ?? theme.textMuted ?? theme.text?.base ?? "#808080";
 	const root = createElement("box");
 	spread(root, {
-		width: "100%",
 		flexDirection: "column",
 		flexShrink: 1,
 		minWidth: 0,
