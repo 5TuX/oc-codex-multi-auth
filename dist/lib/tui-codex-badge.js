@@ -3,6 +3,7 @@ import { createSignal } from "solid-js";
 import { displayWidth, sanitizeDisplayText } from "./ui/display-text.js";
 const BODY_WIDTH = 8;
 const INITIAL_LAYOUT_WIDTH = 120;
+const MIN_BADGE_WIDTH = 16;
 const JET_STOPS = [
     { at: 0, color: [0, 0, 1] },
     { at: 0.25, color: [0, 1, 1] },
@@ -97,6 +98,11 @@ function activeRow(badge, windows, compact, mutedColor) {
 function rowText(row) {
     return row.map((segment) => segment.text).join("");
 }
+function layoutWidth(rows, fallback) {
+    if (rows.length === 0)
+        return fallback;
+    return Math.max(MIN_BADGE_WIDTH, ...rows.map((row) => displayWidth(rowText(row))));
+}
 function fits(row, width) {
     return displayWidth(rowText(row)) <= width;
 }
@@ -114,7 +120,7 @@ function aggregateRow(badge, includeReset, now, mutedColor) {
 }
 /** Format colored status rows within the measured slot width. */
 export function formatCodexUsageBadge(badge, width, now = Date.now(), mutedColor = "#808080") {
-    if (!Number.isFinite(width) || width < 32)
+    if (!Number.isFinite(width) || width < MIN_BADGE_WIDTH)
         return [];
     const compact = width < 64;
     const primary = usageWindow(badge.primary, !compact, now, mutedColor);
@@ -148,16 +154,21 @@ export function formatCodexUsageBadge(badge, width, now = Date.now(), mutedColor
 export function renderCodexUsageBadge(badge, theme) {
     const [width, setWidth] = createSignal(INITIAL_LAYOUT_WIDTH);
     const mutedColor = theme.text?.muted ?? theme.textMuted ?? theme.text?.base ?? "#808080";
+    const rows = () => formatCodexUsageBadge(badge(), width(), Date.now(), mutedColor);
     const root = createElement("box");
     spread(root, {
+        get width() {
+            return layoutWidth(rows(), width());
+        },
         flexDirection: "column",
         flexShrink: 1,
         minWidth: 0,
         onSizeChange: function () {
-            setWidth(this.width);
+            if (this.width < layoutWidth(rows(), width()))
+                setWidth(this.width);
         },
         get children() {
-            return formatCodexUsageBadge(badge(), width(), Date.now(), mutedColor).map((row) => {
+            return rows().map((row) => {
                 const line = createElement("box");
                 spread(line, {
                     flexDirection: "row",

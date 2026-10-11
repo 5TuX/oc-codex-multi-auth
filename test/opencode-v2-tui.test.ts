@@ -14,6 +14,7 @@ vi.mock("solid-js", () => ({
 	onCleanup: (cleanup: () => void) => mocks.cleanups.push(cleanup),
 }));
 import { setupV2Tui } from "../lib/opencode-v2-tui.js";
+import { renderCodexUsageBadge } from "../lib/tui-codex-badge.js";
 
 type RenderedElement = {
 	children?: string | RenderedElement[];
@@ -68,6 +69,29 @@ it("appends the custom Codex badge to home and session status slots", () => {
 	expect(placements).toContainEqual(expect.objectContaining({ append: "home.footer.status" }));
 	expect(placements).toContainEqual(expect.objectContaining({ append: "prompt.footer.status" }));
 	expect(placements.every((placement) => placement.replace === undefined)).toBe(true);
+});
+
+it("keeps detailed badge rows when the content-sized slot fits without shrinking", () => {
+	const future = Date.now() + 3_600_000;
+	const detailedBadge = {
+		...testBadge,
+		primary: { ...testBadge.primary, resetAtMs: future },
+		secondary: { ...testBadge.secondary, resetAtMs: future },
+		aggregate: {
+			accountCount: 2,
+			availableCount: 2,
+			primary: { label: "5h", usedPercent: 40, resetAtMs: future },
+			secondary: { label: "weekly", usedPercent: 25, resetAtMs: future },
+		},
+	};
+	const rendered = renderCodexUsageBadge(() => detailedBadge, { text: { base: "white" } } as Plugin.Context["theme"]);
+	const naturalWidth = rendered.width as number;
+
+	rendered.onSizeChange?.call({ width: naturalWidth });
+
+	const text = initialRenderedText(rendered);
+	expect(text).toContain("[Plus 1/2]");
+	expect(text).toContain("[All");
 });
 
 describe("V2 accounts UI", () => {
@@ -130,6 +154,7 @@ describe("V2 accounts UI", () => {
 		messages.push({ type: "assistant", model: { providerID: "openai" } }, { type: "user" });
 		const sessionBadge = slots.get("prompt.footer.status")!.render({ sessionID: "test" })!;
 		expect(sessionBadge.width).not.toBe("100%");
+		expect(sessionBadge.width).toBe("[Plus 1/2] 5h: 60% | weekly: 40%".length);
 		expect(initialRenderedText(sessionBadge)).toBe("[Plus 1/2] 5h: 60% | weekly: 40%");
 		expect(renderedText(sessionBadge)).toBe("[Plus 1/2] 5h: 60% | weekly: 40%");
 		const homeBadge = slots.get("home.footer.status")!.render({})!;

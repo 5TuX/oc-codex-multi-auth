@@ -15,6 +15,7 @@ export type CodexBadgeRow = CodexBadgeSegment[];
 type Rgb = [number, number, number];
 const BODY_WIDTH = 8;
 const INITIAL_LAYOUT_WIDTH = 120;
+const MIN_BADGE_WIDTH = 16;
 const JET_STOPS: Array<{ at: number; color: Rgb }> = [
 	{ at: 0, color: [0, 0, 1] },
 	{ at: 0.25, color: [0, 1, 1] },
@@ -117,6 +118,11 @@ function rowText(row: CodexBadgeRow): string {
 	return row.map((segment) => segment.text).join("");
 }
 
+function layoutWidth(rows: CodexBadgeRow[], fallback: number): number {
+	if (rows.length === 0) return fallback;
+	return Math.max(MIN_BADGE_WIDTH, ...rows.map((row) => displayWidth(rowText(row))));
+}
+
 function fits(row: CodexBadgeRow, width: number): boolean {
 	return displayWidth(rowText(row)) <= width;
 }
@@ -145,7 +151,7 @@ export function formatCodexUsageBadge(
 	now = Date.now(),
 	mutedColor = "#808080",
 ): CodexBadgeRow[] {
-	if (!Number.isFinite(width) || width < 32) return [];
+	if (!Number.isFinite(width) || width < MIN_BADGE_WIDTH) return [];
 	const compact = width < 64;
 	const primary = usageWindow(badge.primary, !compact, now, mutedColor);
 	const secondary = usageWindow(badge.secondary, !compact, now, mutedColor);
@@ -179,16 +185,20 @@ export function renderCodexUsageBadge(
 ) {
 	const [width, setWidth] = createSignal(INITIAL_LAYOUT_WIDTH);
 	const mutedColor = theme.text?.muted ?? theme.textMuted ?? theme.text?.base ?? "#808080";
+	const rows = () => formatCodexUsageBadge(badge(), width(), Date.now(), mutedColor);
 	const root = createElement("box");
 	spread(root, {
+		get width() {
+			return layoutWidth(rows(), width());
+		},
 		flexDirection: "column",
 		flexShrink: 1,
 		minWidth: 0,
 		onSizeChange: function (this: { width: number }) {
-			setWidth(this.width);
+			if (this.width < layoutWidth(rows(), width())) setWidth(this.width);
 		},
 		get children() {
-			return formatCodexUsageBadge(badge(), width(), Date.now(), mutedColor).map((row) => {
+			return rows().map((row) => {
 				const line = createElement("box");
 				spread(line, {
 					flexDirection: "row",
