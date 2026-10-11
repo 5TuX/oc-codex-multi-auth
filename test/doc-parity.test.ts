@@ -581,6 +581,19 @@ describe("runtime documentation parity", () => {
 		}
 	});
 
+	it("builds compiled plugin exports for Git dependency installs", () => {
+		const packageJson = JSON.parse(readRepoFile("package.json")) as {
+			exports?: Record<string, { import?: string }>;
+			scripts?: Record<string, string>;
+		};
+
+		expect(packageJson.scripts?.prepare).toContain("npm run build");
+		expect(packageJson.scripts?.prepare).toContain("husky");
+		for (const entry of Object.values(packageJson.exports ?? {})) {
+			expect(entry.import).toMatch(/^\.\/dist\//);
+		}
+	});
+
 	it("keeps committed fixtures free of static OpenAI-style secret strings", () => {
 		const scannedFiles = [
 			"AGENTS.md",

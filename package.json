@@ -79,7 +79,7 @@
     "audit:ci": "npm run audit:prod && npm run audit:dev:allowlist",
     "bench": "npm run build && node --expose-gc test/perf/bench.mjs",
     "prepublishOnly": "npm run build",
-    "prepare": "husky"
+    "prepare": "npm run build && husky"
   },
   "bin": {
     "oc-codex-multi-auth": "scripts/install-oc-codex-multi-auth.js"
