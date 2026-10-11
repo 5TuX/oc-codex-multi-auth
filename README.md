@@ -50,6 +50,11 @@ Replace `<tested-commit-sha>` with the full SHA of the published fork commit.
 When updating the fork, update this pin only after reviewing and testing the
 new commit. No npm publication is required.
 
+OpenCode installs Git plugins with lifecycle scripts disabled, so the compiled
+`dist/` entrypoints are committed with each release. After cloning this fork for
+development, run `npm ci`, `npm run setup:hooks`, and `npm run build` before
+working on it.
+
 ### Updating this fork from upstream
 
 Keep `origin` pointing at `https://github.com/5TuX/oc-codex-multi-auth.git`
@@ -65,6 +70,7 @@ git fetch upstream
 git switch main
 git merge --no-edit upstream/main
 npm ci
+npm run setup:hooks
 npm test
 npm run typecheck
 npm run lint

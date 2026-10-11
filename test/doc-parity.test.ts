@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -581,16 +582,25 @@ describe("runtime documentation parity", () => {
 		}
 	});
 
-	it("builds compiled plugin exports for Git dependency installs", () => {
+	it("ships Git-installable plugin exports without lifecycle scripts", () => {
 		const packageJson = JSON.parse(readRepoFile("package.json")) as {
 			exports?: Record<string, { import?: string }>;
 			scripts?: Record<string, string>;
 		};
+		const root = path.resolve(testDir, "..");
 
-		expect(packageJson.scripts?.prepare).toContain("npm run build");
-		expect(packageJson.scripts?.prepare).toContain("husky");
+		expect(packageJson.scripts?.prepare).toBeUndefined();
+		expect(packageJson.scripts?.["setup:hooks"]).toContain("husky");
 		for (const entry of Object.values(packageJson.exports ?? {})) {
 			expect(entry.import).toMatch(/^\.\/dist\//);
+			const artifact = entry.import?.slice(2);
+			expect(artifact).toBeTruthy();
+			expect(
+				execFileSync("git", ["ls-files", "--error-unmatch", artifact!], {
+					cwd: root,
+					encoding: "utf8",
+				}).trim(),
+			).toBe(artifact);
 		}
 	});
 
