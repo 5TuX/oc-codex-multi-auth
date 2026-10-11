@@ -50,10 +50,12 @@ Replace `<tested-commit-sha>` with the full SHA of the published fork commit.
 When updating the fork, update this pin only after reviewing and testing the
 new commit. No npm publication is required.
 
-OpenCode installs Git plugins with lifecycle scripts disabled, so the compiled
-`dist/` entrypoints are committed with each release. After cloning this fork for
-development, run `npm ci`, `npm run setup:hooks`, and `npm run build` before
-working on it.
+OpenCode 2.0.26's Git-plugin installer rejects this package when it declares an
+npm script named `build`, and it does not run a renamed compile script during
+Git installation. The compiled `dist/` entrypoints are therefore committed
+with each release and local builds use `npm run compile`. After cloning this
+fork for development, run `npm ci`, `npm run setup:hooks`, and
+`npm run compile` before working on it.
 
 ### Updating this fork from upstream
 
@@ -74,7 +76,7 @@ npm run setup:hooks
 npm test
 npm run typecheck
 npm run lint
-npm run build
+npm run compile
 # After reviewing the merge and the checks:
 git push origin main
 ```

@@ -8,7 +8,7 @@
 ## Testing
 
 - [ ] `npm run lint`
-- [ ] `npm run build`
+- [ ] `npm run compile`
 - [ ] `npm run typecheck`
 - [ ] `npm test`
 - [ ] `npm test -- test/doc-parity.test.ts`

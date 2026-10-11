@@ -2417,7 +2417,7 @@ describe("standalone oc-codex-multi-auth CLI commands", () => {
 	});
 
 	it("doctor: a flagged-runtime load failure falls back to the file probe only when dist is absent", async () => {
-		// The file probe is the dev-checkout path (no `npm run build` yet) —
+		// The file probe is the dev-checkout path (no `npm run compile` yet) —
 		// a throwing runtime loader there must not fail the command.
 		vi.resetModules();
 		vi.stubEnv("CODEX_KEYCHAIN", "1");

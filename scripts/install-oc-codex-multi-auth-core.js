@@ -1105,7 +1105,7 @@ async function readStandaloneFlaggedPool(storagePath, parsed, resolution, env = 
 			[storageMod] = await loadRuntime();
 		} catch (error) {
 			// The file probe is only the fallback for a MISSING dist build (a
-			// dev checkout that never ran `npm run build`). When dist/storage.js
+			// dev checkout that never ran `npm run compile`). When dist/storage.js
 			// exists the import should have succeeded — a throw here is a real
 			// runtime failure, and falling through would report zero flagged
 			// accounts while the keychain still holds them.
@@ -1476,7 +1476,7 @@ async function loadDistModules(relativePaths, label) {
 		return await Promise.all(relativePaths.map((rel) => import(toUrl(rel))));
 	} catch (error) {
 		throw new Error(
-			`Could not load ${label} runtime from dist/. Build the package first (npm run build). Cause: ${formatErrorForLog(error)}`,
+			`Could not load ${label} runtime from dist/. Compile the package first (npm run compile). Cause: ${formatErrorForLog(error)}`,
 		);
 	}
 }

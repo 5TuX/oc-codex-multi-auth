@@ -495,7 +495,7 @@ describe("runtime documentation parity", () => {
 			"npm run typecheck",
 			"npm run lint",
 			"npm test",
-			"npm run build",
+			"npm run compile",
 			"npm run audit:ci",
 		];
 
@@ -562,7 +562,7 @@ describe("runtime documentation parity", () => {
 		expect(installerPath).toBe("scripts/install-oc-codex-multi-auth.js");
 		expect(repoPathExists(installerPath ?? "")).toBe(true);
 		expect(readRepoFile(installerPath ?? "")).toMatch(/^#!\/usr\/bin\/env node/);
-		expect(packageJson.scripts?.build).toContain("node scripts/clean-dist.js");
+		expect(packageJson.scripts?.compile).toContain("node scripts/clean-dist.js");
 		expect(repoPathExists("scripts/clean-dist.js")).toBe(true);
 
 		const exports = packageJson.exports ?? {};
@@ -582,7 +582,7 @@ describe("runtime documentation parity", () => {
 		}
 	});
 
-	it("ships Git-installable plugin exports without lifecycle scripts", () => {
+	it("ships Git-installable plugin exports without an npm build script", () => {
 		const packageJson = JSON.parse(readRepoFile("package.json")) as {
 			exports?: Record<string, { import?: string }>;
 			scripts?: Record<string, string>;
@@ -590,6 +590,9 @@ describe("runtime documentation parity", () => {
 		const root = path.resolve(testDir, "..");
 
 		expect(packageJson.scripts?.prepare).toBeUndefined();
+		expect(packageJson.scripts?.prepublishOnly).toBeUndefined();
+		expect(packageJson.scripts?.build).toBeUndefined();
+		expect(packageJson.scripts?.compile).toContain("tsc");
 		expect(packageJson.scripts?.["setup:hooks"]).toContain("husky");
 		for (const entry of Object.values(packageJson.exports ?? {})) {
 			expect(entry.import).toMatch(/^\.\/dist\//);

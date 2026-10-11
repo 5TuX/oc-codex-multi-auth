@@ -60,7 +60,7 @@
     "url": "https://github.com/5TuX/oc-codex-multi-auth/issues"
   },
   "scripts": {
-    "build": "node scripts/clean-dist.js && tsc && node scripts/copy-oauth-success.js",
+    "compile": "node scripts/clean-dist.js && tsc && node scripts/copy-oauth-success.js",
     "typecheck": "tsc --noEmit",
     "lint": "npm run lint:ts && npm run lint:scripts",
     "lint:ts": "eslint . --ext .ts",
@@ -77,8 +77,7 @@
     "audit:all": "npm audit --audit-level=high",
     "audit:dev:allowlist": "node scripts/audit-dev-allowlist.js",
     "audit:ci": "npm run audit:prod && npm run audit:dev:allowlist",
-    "bench": "npm run build && node --expose-gc test/perf/bench.mjs",
-    "prepublishOnly": "npm run build",
+    "bench": "npm run compile && node --expose-gc test/perf/bench.mjs",
     "setup:hooks": "husky"
   },
   "bin": {

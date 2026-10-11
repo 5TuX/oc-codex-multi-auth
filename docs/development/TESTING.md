@@ -10,7 +10,7 @@ Run all of these before opening a PR — the same six commands run in CI (`.gith
 npm ci
 npm run typecheck
 npm run lint
-npm run build
+npm run compile
 npm test
 npm run audit:ci
 ```
@@ -21,7 +21,7 @@ npm run audit:ci
 | `npm run lint` | ESLint flat config (`no-explicit-any`; tests linted under relaxed rules) |
 | `npm test` | Vitest suite — auth, config, transforms, storage, rotation, tools, TUI, recovery, docs parity |
 | `npm run test:coverage` | Coverage thresholds from `vitest.config.ts` |
-| `npm run build` | clean `dist/`, compile, copy OAuth success page |
+| `npm run compile` | clean `dist/`, compile, copy OAuth success page |
 | `npm run audit:ci` | production audit + dev-advisory allowlist |
 
 ## Suite Layout

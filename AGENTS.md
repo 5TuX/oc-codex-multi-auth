@@ -86,7 +86,7 @@ only the host contract differs. Per-location `createStorageScope`
 ## COMMANDS
 
 ```bash
-npm run build            # clean dist + tsc + emit oauth-success.html
+npm run compile          # clean dist + tsc + emit oauth-success.html
 npm run typecheck        # tsc --noEmit
 npm run lint             # eslint .ts + scripts/*.js
 npm test                 # vitest run

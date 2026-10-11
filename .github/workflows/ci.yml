@@ -60,7 +60,7 @@ jobs:
       # Build must precede Test: dist/ is gitignored, and the standalone CLI
       # tests load the compiled warm/limits runtime out of dist/.
       - name: Build
-        run: npm run build
+        run: npm run compile
 
       - name: Test
         run: npm test
@@ -91,10 +91,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # `npm pack` runs prepack, not prepublishOnly, so dist/ must be built here
-      # or the tarball ships without its compiled runtime.
-      - name: Build
-        run: npm run build
+      # Compile current sources before verifying the publishable tarball.
+      - name: Compile
+        run: npm run compile
 
       - name: Pack the publishable tarball
         run: npm pack --pack-destination "$RUNNER_TEMP"

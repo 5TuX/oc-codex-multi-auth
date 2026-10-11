@@ -229,6 +229,6 @@ docs/
 ```bash
 npm test -- test/doc-parity.test.ts   # docs/config/tool-registry parity
 npm run typecheck && npm run lint
-npm test && npm run build
+npm test && npm run compile
 git diff --check
 ```
