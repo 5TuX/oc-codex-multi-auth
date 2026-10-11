@@ -137,7 +137,7 @@ export function setupV2Tui(context) {
             },
         }), context.ui.slot({
             append: "home.footer.status",
-            render: () => renderCodexUsageBadge(badge, context.theme),
+            render: () => renderCodexUsageBadge(badge, context.theme, context.renderer),
         }), context.ui.slot({
             append: "prompt.footer.status",
             render: (props) => {
@@ -154,7 +154,7 @@ export function setupV2Tui(context) {
                 }
                 if (showFor() === "codex-models" && providerID && providerID !== "openai")
                     return null;
-                return renderCodexUsageBadge(badge, context.theme);
+                return renderCodexUsageBadge(badge, context.theme, context.renderer);
             },
         }), context.ui.slot({
             append: "sidebar.content",

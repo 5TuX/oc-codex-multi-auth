@@ -9,4 +9,4 @@ export type CodexBadgeRow = CodexBadgeSegment[];
 /** Format colored status rows within the measured slot width. */
 export declare function formatCodexUsageBadge(badge: CodexStatusBadge, width: number, now?: number, mutedColor?: string): CodexBadgeRow[];
 /** Render into a flex-shrinking, content-sized slot and compact to its measured width. */
-export declare function renderCodexUsageBadge(badge: () => CodexStatusBadge, theme: Plugin.Context["theme"]): import("@opentui/core").BaseRenderable;
+export declare function renderCodexUsageBadge(badge: () => CodexStatusBadge, theme: Plugin.Context["theme"], renderer?: Plugin.Context["renderer"]): import("@opentui/core").BaseRenderable;

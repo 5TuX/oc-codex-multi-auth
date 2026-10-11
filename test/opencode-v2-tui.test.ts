@@ -94,6 +94,39 @@ it("keeps detailed badge rows when the content-sized slot fits without shrinking
 	expect(text).toContain("[All");
 });
 
+it("restores the badge after the terminal widens following a narrow resize", () => {
+	const resizeListeners = new Set<(width: number, height: number) => void>();
+	const renderer = {
+		width: 120,
+		on: vi.fn((_event: string, listener: (width: number, height: number) => void) => resizeListeners.add(listener)),
+		off: vi.fn((_event: string, listener: (width: number, height: number) => void) => resizeListeners.delete(listener)),
+	};
+	const future = Date.now() + 3_600_000;
+	const detailedBadge = {
+		...testBadge,
+		primary: { ...testBadge.primary, resetAtMs: future },
+		secondary: { ...testBadge.secondary, resetAtMs: future },
+		aggregate: {
+			accountCount: 2,
+			availableCount: 2,
+			primary: { label: "5h", usedPercent: 40, resetAtMs: future },
+			secondary: { label: "weekly", usedPercent: 25, resetAtMs: future },
+		},
+	};
+	const rendered = renderCodexUsageBadge(
+		() => detailedBadge,
+		{ text: { base: "white" } } as Plugin.Context["theme"],
+		renderer as unknown as Plugin.Context["renderer"],
+	) as RenderedElement;
+
+	expect(initialRenderedText(rendered)).toContain("[All");
+	rendered.onSizeChange?.call({ width: 20 });
+	expect(initialRenderedText(rendered)).toBe("");
+	for (const listener of resizeListeners) listener(120, 30);
+	expect(initialRenderedText(rendered)).toContain("[Plus 1/2]");
+	expect(initialRenderedText(rendered)).toContain("[All");
+});
+
 describe("V2 accounts UI", () => {
 	it("exposes accounts without a mounted prompt and cleans up polling", async () => {
 		vi.useFakeTimers();

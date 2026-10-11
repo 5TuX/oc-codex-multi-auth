@@ -28,6 +28,7 @@ function badgeWindow(limits, weekly) {
             ? Math.max(0, Math.min(100, 100 - limit.leftPercent))
             : undefined;
     const resetAtMs = typeof limit.resetAtMs === "number" && Number.isFinite(limit.resetAtMs)
+        && limit.resetAtMs > Date.now()
         ? limit.resetAtMs
         : undefined;
     if (usedPercent === undefined && resetAtMs === undefined)

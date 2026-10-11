@@ -246,7 +246,7 @@ it("aggregates only enabled accounts with usable readings", async () => {
 			{ label: "5h", usedPercent: 100, resetAtMs: now + 10_000 },
 		] },
 		{ index: 4, fingerprint: "invalid", limits: [
-			{ label: "5h", usedPercent: Number.NaN, resetAtMs: Number.POSITIVE_INFINITY },
+			{ label: "5h", usedPercent: Number.NaN, resetAtMs: now - 1 },
 		] },
 	] });
 	const result = await readV2Status({ width: 80 });

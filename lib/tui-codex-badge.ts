@@ -1,6 +1,6 @@
 import { createElement, spread } from "@opentui/solid";
 import type { Plugin } from "@opencode/plugin/tui";
-import { createSignal } from "solid-js";
+import { createSignal, onCleanup } from "solid-js";
 import { displayWidth, sanitizeDisplayText } from "./ui/display-text.js";
 import type { CodexStatusBadge } from "./opencode-v2-rpc.js";
 
@@ -15,7 +15,7 @@ export type CodexBadgeRow = CodexBadgeSegment[];
 type Rgb = [number, number, number];
 const BODY_WIDTH = 8;
 const INITIAL_LAYOUT_WIDTH = 120;
-const MIN_BADGE_WIDTH = 16;
+const MIN_BADGE_WIDTH = 32;
 const JET_STOPS: Array<{ at: number; color: Rgb }> = [
 	{ at: 0, color: [0, 0, 1] },
 	{ at: 0.25, color: [0, 1, 1] },
@@ -182,8 +182,19 @@ export function formatCodexUsageBadge(
 export function renderCodexUsageBadge(
 	badge: () => CodexStatusBadge,
 	theme: Plugin.Context["theme"],
+	renderer?: Plugin.Context["renderer"],
 ) {
-	const [width, setWidth] = createSignal(INITIAL_LAYOUT_WIDTH);
+	const initialWidth = typeof renderer?.width === "number" && Number.isFinite(renderer.width)
+		? Math.max(0, Math.floor(renderer.width))
+		: INITIAL_LAYOUT_WIDTH;
+	const [width, setWidth] = createSignal(initialWidth);
+	if (typeof renderer?.on === "function") {
+		const onResize = (nextWidth: number) => {
+			setWidth(Number.isFinite(nextWidth) ? Math.max(0, Math.floor(nextWidth)) : INITIAL_LAYOUT_WIDTH);
+		};
+		renderer.on("resize", onResize);
+		onCleanup(() => renderer.off("resize", onResize));
+	}
 	const mutedColor = theme.text?.muted ?? theme.textMuted ?? theme.text?.base ?? "#808080";
 	const rows = () => formatCodexUsageBadge(badge(), width(), Date.now(), mutedColor);
 	const root = createElement("box");

@@ -1,9 +1,9 @@
 import { createElement, spread } from "@opentui/solid";
-import { createSignal } from "solid-js";
+import { createSignal, onCleanup } from "solid-js";
 import { displayWidth, sanitizeDisplayText } from "./ui/display-text.js";
 const BODY_WIDTH = 8;
 const INITIAL_LAYOUT_WIDTH = 120;
-const MIN_BADGE_WIDTH = 16;
+const MIN_BADGE_WIDTH = 32;
 const JET_STOPS = [
     { at: 0, color: [0, 0, 1] },
     { at: 0.25, color: [0, 1, 1] },
@@ -151,8 +151,18 @@ export function formatCodexUsageBadge(badge, width, now = Date.now(), mutedColor
     return compactAggregate && fits(compactAggregate, width) ? [active, compactAggregate] : [active];
 }
 /** Render into a flex-shrinking, content-sized slot and compact to its measured width. */
-export function renderCodexUsageBadge(badge, theme) {
-    const [width, setWidth] = createSignal(INITIAL_LAYOUT_WIDTH);
+export function renderCodexUsageBadge(badge, theme, renderer) {
+    const initialWidth = typeof renderer?.width === "number" && Number.isFinite(renderer.width)
+        ? Math.max(0, Math.floor(renderer.width))
+        : INITIAL_LAYOUT_WIDTH;
+    const [width, setWidth] = createSignal(initialWidth);
+    if (typeof renderer?.on === "function") {
+        const onResize = (nextWidth) => {
+            setWidth(Number.isFinite(nextWidth) ? Math.max(0, Math.floor(nextWidth)) : INITIAL_LAYOUT_WIDTH);
+        };
+        renderer.on("resize", onResize);
+        onCleanup(() => renderer.off("resize", onResize));
+    }
     const mutedColor = theme.text?.muted ?? theme.textMuted ?? theme.text?.base ?? "#808080";
     const rows = () => formatCodexUsageBadge(badge(), width(), Date.now(), mutedColor);
     const root = createElement("box");

@@ -43,12 +43,9 @@ describe("Codex usage badge formatting", () => {
 		expect(rows.map(rowText)).toEqual(["[Plus 2/2] 5h: 40% (-1h) | weekly: 25% (-1d)"]);
 	});
 
-	it("keeps the primary quota visible in a narrow compact slot", () => {
-		expect(formatCodexUsageBadge(badge, 20, now).map(rowText)).toEqual(["[Plus] 5h: 40%"]);
-	});
-
-	it("omits the badge below its minimum compact width", () => {
-		expect(formatCodexUsageBadge(badge, 15, now)).toEqual([]);
+	it("omits the badge below 32 columns and keeps it compact at 32", () => {
+		expect(formatCodexUsageBadge(badge, 31, now)).toEqual([]);
+		expect(formatCodexUsageBadge(badge, 32, now).map(rowText)).toEqual(["[Plus] 5h: 40% | weekly: 25%"]);
 	});
 
 	it("keeps every rendered row within its actual slot width", () => {
