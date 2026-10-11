@@ -54,9 +54,13 @@ new commit. No npm publication is required.
 
 Keep `origin` pointing at `https://github.com/5TuX/oc-codex-multi-auth.git`
 and `upstream` pointing at `https://github.com/ndycode/oc-codex-multi-auth.git`.
-With a clean working tree:
+The workflow refuses to proceed if the working tree is dirty:
 
 ```sh
+if [ -n "$(git status --porcelain)" ]; then
+  echo "Refusing upstream sync: commit or stash the working-tree changes first." >&2
+  exit 1
+fi
 git fetch upstream
 git switch main
 git merge --no-edit upstream/main
