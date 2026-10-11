@@ -249,6 +249,13 @@ describe("V2 compatibility adapter", () => {
 					inputSchema: { type: "object", properties: {} },
 					strict: true,
 				},
+				{
+					type: "function",
+					name: "explicit_relaxed",
+					inputSchema: { type: "object", properties: {} },
+					strict: false,
+				},
+				{ type: "provider", id: "openai.web_search", name: "web_search", args: {} },
 			],
 		};
 		try {
@@ -257,6 +264,10 @@ describe("V2 compatibility adapter", () => {
 			const tools = captured[0]!.tools as Array<Record<string, unknown>>;
 			expect(tools.find((tool) => tool.name === "task")).toMatchObject({ strict: false });
 			expect(tools.find((tool) => tool.name === "explicit_strict")).toMatchObject({ strict: true });
+			expect(tools.find((tool) => tool.name === "explicit_relaxed")).toMatchObject({ strict: false });
+			const providerTool = tools.find((tool) => tool.type === "web_search");
+			expect(providerTool).toBeDefined();
+			expect(providerTool).not.toHaveProperty("strict");
 			expect(options.tools?.[0]).not.toHaveProperty("strict");
 		} finally {
 			await cleanup();
