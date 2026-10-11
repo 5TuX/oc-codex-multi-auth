@@ -38,10 +38,20 @@ function createV2Language(model: ReturnType<ReturnType<typeof createOpenAI>["res
 		delete openai.conversation;
 		return { ...options, providerOptions: { ...options.providerOptions, openai } };
 	};
+	// The SDK only writes `strict` for tools that declare it, and the Codex
+	// backend treats an omitted flag as strict mode: every declared schema
+	// property becomes required, so the model fills optional args (e.g. the
+	// task tool's sessionID) with fabricated values. Pin strict:false unless
+	// the tool opted in itself.
+	const relaxTools = (options: Options): Options => ({
+		...options,
+		tools: options.tools?.map((tool) =>
+			tool.type === "function" ? { ...tool, strict: tool.strict ?? false } : tool),
+	});
 	return new Proxy(model, {
 		get(target, property, receiver) {
-			if (property === "doGenerate") return (options: Options) => target.doGenerate(stateless(options));
-			if (property === "doStream") return (options: Options) => target.doStream(stateless(options));
+			if (property === "doGenerate") return (options: Options) => target.doGenerate(stateless(relaxTools(options)));
+			if (property === "doStream") return (options: Options) => target.doStream(stateless(relaxTools(options)));
 			return Reflect.get(target, property, receiver);
 		},
 	});
