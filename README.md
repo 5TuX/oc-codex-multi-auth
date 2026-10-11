@@ -1,9 +1,7 @@
 # oc-codex-multi-auth
 
-[![npm version](https://img.shields.io/npm/v/oc-codex-multi-auth.svg)](https://www.npmjs.com/package/oc-codex-multi-auth)
-[![npm downloads](https://img.shields.io/npm/dw/oc-codex-multi-auth.svg)](https://www.npmjs.com/package/oc-codex-multi-auth)
-[![CI](https://github.com/ndycode/oc-codex-multi-auth/actions/workflows/ci.yml/badge.svg)](https://github.com/ndycode/oc-codex-multi-auth/actions/workflows/ci.yml)
-[![MIT license](https://img.shields.io/npm/l/oc-codex-multi-auth.svg)](LICENSE)
+[![CI](https://github.com/5TuX/oc-codex-multi-auth/actions/workflows/ci.yml/badge.svg)](https://github.com/5TuX/oc-codex-multi-auth/actions/workflows/ci.yml)
+[MIT license](LICENSE)
 
 <img width="1227" height="702" alt="oc-codex-multi-auth OpenAI accounts picker in OpenCode — add accounts, check quotas, and per-account health" src="https://github.com/user-attachments/assets/b796eb2f-282e-468a-ba6a-acadf09d731b" />
 
@@ -23,6 +21,59 @@ Using the official Codex CLI rather than OpenCode? The sibling project [`codex-m
 - **Standalone CLI** — the same package runs `status`, `list`, `limits`, `doctor`, and friends directly — no agent, no token cost.
 - **OpenCode V2** — OpenCode 2.0.16+ loads the plugin through a V2 adapter that shares the account pool and request pipeline.
 - **Keychain option** — `CODEX_KEYCHAIN=1` stores the pool in macOS Keychain, Windows Credential Manager, or Linux libsecret.
+
+## 5TuX fork: custom Codex badge (OpenCode V2)
+
+This GitHub-only fork of [ndycode/oc-codex-multi-auth](https://github.com/ndycode/oc-codex-multi-auth)
+keeps the upstream authentication/account tools and replaces its V2 quota
+contribution with a colored Codex usage badge. It appends to the home and
+session footers without replacing OpenCode's native running spinner/status.
+No Anthropic, Copilot, or Zen usage badges are included.
+
+This fork is GitHub-only and is not published to npm. The npm installation
+instructions below install the upstream package, not this fork.
+
+### Install this fork
+
+Use a tested, immutable commit SHA in the plugin declaration; do not pin a
+device setup to the moving `main` branch:
+
+```jsonc
+{
+  "plugin": [
+    "oc-codex-multi-auth@git+https://github.com/5TuX/oc-codex-multi-auth.git#<tested-commit-sha>"
+  ]
+}
+```
+
+Replace `<tested-commit-sha>` with the full SHA of the published fork commit.
+When updating the fork, update this pin only after reviewing and testing the
+new commit. No npm publication is required.
+
+### Updating this fork from upstream
+
+Keep `origin` pointing at `https://github.com/5TuX/oc-codex-multi-auth.git`
+and `upstream` pointing at `https://github.com/ndycode/oc-codex-multi-auth.git`.
+With a clean working tree:
+
+```sh
+git fetch upstream
+git switch main
+git merge --no-edit upstream/main
+npm ci
+npm test
+npm run typecheck
+npm run lint
+npm run build
+# After reviewing the merge and the checks:
+git push origin main
+```
+
+If Git reports conflicts, resolve and review them before committing the merge
+or publishing it. This workflow preserves upstream history: no rebase, force
+push, or automatic publication. After publishing a reviewed fork commit,
+update each consumer's exact Git-SHA pin intentionally; never silently follow
+`main`.
 
 ## Install
 
