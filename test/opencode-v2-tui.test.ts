@@ -182,6 +182,7 @@ describe("V2 accounts UI", () => {
 		expect(alert.mock.calls[1]?.[0].message).toContain("global pool is shared across projects");
 		expect(alert.mock.calls[1]?.[0].message).toContain("~/.opencode/openai-codex-auth-config.json");
 		expect(alert.mock.calls[1]?.[0].message).not.toContain("from this project directory");
+		expect(slots.get("prompt.footer.status")!.render({})).toBeNull();
 		// Hiding Codex quota for a different provider must not hide the account list.
 		expect(renderedText(slots.get("prompt.footer.status")!.render({ sessionID: "test" }))).toBeNull();
 		messages.push({ type: "assistant", model: { providerID: "openai" } }, { type: "user" });
@@ -304,7 +305,7 @@ describe("V2 accounts UI", () => {
 		expect(sidebar.children).toContain("* 1. Fi rst");
 		expect(sidebar.children).toContain("o 2. Second");
 		expect(sidebar.children).not.toContain("\x1b");
-		const footer = renderedText(slots.get("prompt.footer.status")!.render({}));
+		const footer = renderedText(slots.get("prompt.footer.status")!.render({ sessionID: "test" }));
 		expect(footer).toBe("[Plus 1/2] 5h: 60% | weekly: 40%");
 		expect(footer).not.toContain("quota ready");
 	});

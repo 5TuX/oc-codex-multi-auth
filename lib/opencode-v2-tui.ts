@@ -148,15 +148,15 @@ export function setupV2Tui(context: Plugin.Context) {
 	}), context.ui.slot({
 		append: "prompt.footer.status",
 		render: (props) => {
-			let providerID = props.sessionID ? context.data.session.get(props.sessionID)?.model?.providerID : undefined;
-			if (props.sessionID) {
-				const messages = context.data.session.message.list(props.sessionID) ?? [];
-				for (let index = messages.length - 1; index >= 0; index -= 1) {
-					const message = messages[index];
-					if (message?.type !== "assistant") continue;
-					providerID = message.model.providerID;
-					break;
-				}
+			const sessionID = props.sessionID;
+			if (!sessionID) return null;
+			let providerID = context.data.session.get(sessionID)?.model?.providerID;
+			const messages = context.data.session.message.list(sessionID) ?? [];
+			for (let index = messages.length - 1; index >= 0; index -= 1) {
+				const message = messages[index];
+				if (message?.type !== "assistant") continue;
+				providerID = message.model.providerID;
+				break;
 			}
 			if (showFor() === "codex-models" && providerID && providerID !== "openai") return null;
 			return renderCodexUsageBadge(badge, context.theme, context.renderer);
