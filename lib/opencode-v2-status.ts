@@ -85,9 +85,13 @@ function badgeData(
 	const availableAccounts = (overview?.accounts ?? []).filter((account) =>
 		pool?.accounts.some((candidate, index) => candidate.enabled !== false && index + 1 === account.index),
 	);
+	const availableCount = availableAccounts.filter((account) =>
+		account.readFailedAt === undefined &&
+		(badgeWindow(account.limits, false) !== undefined || badgeWindow(account.limits, true) !== undefined),
+	).length;
 	const aggregate = enabledAccountCount > 1 ? {
 		accountCount: enabledAccountCount,
-		availableCount: availableAccounts.filter((account) => account.readFailedAt === undefined && account.limits.length > 0).length,
+		availableCount,
 		primary: aggregateBadgeWindow(availableAccounts, false),
 		secondary: aggregateBadgeWindow(availableAccounts, true),
 	} : undefined;

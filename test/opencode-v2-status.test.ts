@@ -194,6 +194,7 @@ it("aggregates only enabled accounts with usable readings", async () => {
 		{ refreshToken: "first-secret" },
 		{ refreshToken: "disabled-secret", enabled: false },
 		{ refreshToken: "failed-secret" },
+		{ refreshToken: "invalid-secret" },
 	] };
 	mocks.overview.mockResolvedValue({ fetchedAt: now, accounts: [
 		{ index: 1, fingerprint: "first", limits: [
@@ -205,10 +206,13 @@ it("aggregates only enabled accounts with usable readings", async () => {
 		{ index: 3, fingerprint: "failed", readFailedAt: now, limits: [
 			{ label: "5h", usedPercent: 100, resetAtMs: now + 10_000 },
 		] },
+		{ index: 4, fingerprint: "invalid", limits: [
+			{ label: "5h", usedPercent: Number.NaN, resetAtMs: Number.POSITIVE_INFINITY },
+		] },
 	] });
 	const result = await readV2Status({ width: 80 });
 	expect(result.badge.aggregate).toEqual({
-		accountCount: 2,
+		accountCount: 3,
 		availableCount: 1,
 		primary: { label: "5h", usedPercent: 44, resetAtMs: now + 60_000 },
 		secondary: undefined,
