@@ -40,7 +40,7 @@ device setup to the moving `main` branch:
 
 ```jsonc
 {
-  "plugin": [
+  "plugins": [
     "oc-codex-multi-auth@git+https://github.com/5TuX/oc-codex-multi-auth.git#<tested-commit-sha>"
   ]
 }
