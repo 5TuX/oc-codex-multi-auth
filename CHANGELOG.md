@@ -7,6 +7,16 @@ The current stable release line is `6.x`. This file is the complete release hist
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.29.0] - 2026-10-11
+
+### Added
+- Custom rotation policies: `rotationStrategy: "custom"` runs a user-supplied `.mjs` `select` module in a bounded child process (four-way concurrency cap, 1 MiB input, 64 KiB output, one-second selection deadline) with environment and preload stripped. Policies validate offline through `scripts/rotation-validate.js` against scenario fixtures, feed account-scoped quota observations into host eligibility, and ship a `/rotation` package export for the policy contract. ([#292](https://github.com/ndycode/oc-codex-multi-auth/pull/292), thanks @PENEKhun)
+
+### Fixed
+- `codex-limits` text reports now preserve every emitted field: banked reset credits render whenever the server reports them — including `0 banked`, previously dropped — and the tool description pins complete-report semantics so agent summaries can no longer drop the 5-hour or resets columns the user asked for. ([#291](https://github.com/ndycode/oc-codex-multi-auth/pull/291), thanks @lubshad)
+- Function tools sent to the Codex Responses backend now carry `strict: false` when the host left strictness unset — pinned in the shared `transformRequestForCodex` path ([#294](https://github.com/ndycode/oc-codex-multi-auth/pull/294), thanks @SteveLTN) and in the OpenCode V2 adapter's language-model hook ([#295](https://github.com/ndycode/oc-codex-multi-auth/pull/295)). An omitted flag was treated as strict mode, making optional parameters effectively required so models fabricated values like the subagent `sessionID` and fresh subagent creation failed with `Subagent session not found`. ([#293](https://github.com/ndycode/oc-codex-multi-auth/issues/293))
+- `runRotationPolicy` disarms the selection deadline the moment a complete result arrives, so the deadline can no longer fire inside the Windows `taskkill` teardown window and report `timeout` over a finished policy. ([#292](https://github.com/ndycode/oc-codex-multi-auth/pull/292))
+
 ## [6.28.0] - 2026-10-06
 
 ### Added
