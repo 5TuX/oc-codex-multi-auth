@@ -78,7 +78,9 @@ export async function runRotationPolicy(
 		if (channel && "on" in channel) channel.on("data", (chunk: Buffer) => {
 			if (consume(chunk)) {
 				protocol += decoder.write(chunk);
-				if (protocol.endsWith("\n")) { completed = true; terminate(); }
+				// The deadline bounds waiting for a result, not the teardown
+				// after it lands — taskkill can outlive the remaining budget.
+				if (protocol.endsWith("\n")) { completed = true; clearTimeout(timeout); terminate(); }
 			}
 		});
 		child.on("error", () => fail("spawn"));
