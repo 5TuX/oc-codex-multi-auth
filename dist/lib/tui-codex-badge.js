@@ -59,7 +59,8 @@ function accountPrefix(badge, compact, mutedColor) {
 function usageWindow(window, includeReset, now, mutedColor) {
     if (!window)
         return undefined;
-    const label = sanitizeDisplayText(window.label, { maxLength: 12 });
+    const rawLabel = sanitizeDisplayText(window.label, { maxLength: 12 });
+    const label = rawLabel && /^weekly$/i.test(rawLabel) ? "7d" : rawLabel;
     if (!label)
         return undefined;
     const usedPercent = typeof window.usedPercent === "number" && Number.isFinite(window.usedPercent)
@@ -106,6 +107,28 @@ function layoutWidth(rows, fallback) {
 function fits(row, width) {
     return displayWidth(rowText(row)) <= width;
 }
+function alignWindowSeparators(rows, mutedColor) {
+    const separators = rows.flatMap((row) => {
+        const index = row.findIndex((segment) => segment.text === " | ");
+        return index < 0 ? [] : [displayWidth(row.slice(0, index).map((segment) => segment.text).join(""))];
+    });
+    if (separators.length < 2)
+        return rows;
+    const target = Math.max(...separators);
+    return rows.map((row) => {
+        const index = row.findIndex((segment) => segment.text === " | ");
+        if (index < 0)
+            return row;
+        const padding = target - displayWidth(row.slice(0, index).map((segment) => segment.text).join(""));
+        if (padding === 0)
+            return row;
+        return [
+            ...row.slice(0, index),
+            { text: " ".repeat(padding), color: mutedColor },
+            ...row.slice(index),
+        ];
+    });
+}
 function aggregateRow(badge, includeReset, now, mutedColor) {
     const aggregate = badge.aggregate;
     if (!aggregate || aggregate.accountCount <= 1 || aggregate.availableCount <= 1)
@@ -144,11 +167,14 @@ export function formatCodexUsageBadge(badge, width, now = Date.now(), mutedColor
         return [];
     if (compact)
         return [active];
-    const aggregate = aggregateRow(badge, true, now, mutedColor);
-    if (aggregate && fits(aggregate, width))
-        return [active, aggregate];
-    const compactAggregate = aggregateRow(badge, false, now, mutedColor);
-    return compactAggregate && fits(compactAggregate, width) ? [active, compactAggregate] : [active];
+    for (const aggregate of [aggregateRow(badge, true, now, mutedColor), aggregateRow(badge, false, now, mutedColor)]) {
+        if (!aggregate || !fits(aggregate, width))
+            continue;
+        const aligned = alignWindowSeparators([active, aggregate], mutedColor);
+        if (aligned.every((row) => fits(row, width)))
+            return aligned;
+    }
+    return [active];
 }
 /** Render into a flex-shrinking, content-sized slot and compact to its measured width. */
 export function renderCodexUsageBadge(badge, theme, renderer) {

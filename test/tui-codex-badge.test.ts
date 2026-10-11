@@ -24,15 +24,32 @@ describe("Codex usage badge formatting", () => {
 	it("shows active and aligned aggregate usage with resets on wide slots", () => {
 		const rows = formatCodexUsageBadge(badge, 80, now);
 		expect(rows.map(rowText)).toEqual([
-			"[Plus 2/2] 5h: 40% (-1h) | weekly: 25% (-1d)",
-			"[All     ] 5h: 60% (-1h) | weekly: 38% (-1d)",
+			"[Plus 2/2] 5h: 40% (-1h) | 7d: 25% (-1d)",
+			"[All     ] 5h: 60% (-1h) | 7d: 38% (-1d)",
 		]);
 		expect(rows[0].find((segment) => segment.usedPercent === 40)?.color).toBe("#47ff91");
 	});
 
+	it("aligns quota separators when countdowns have different lengths", () => {
+		const rows = formatCodexUsageBadge({
+			...badge,
+			primary: { ...badge.primary, usedPercent: 29, resetAtMs: now + 3 * 3_600_000 + 37 * 60_000 },
+			secondary: { ...badge.secondary, usedPercent: 21, resetAtMs: now + 6 * 86_400_000 + 17 * 3_600_000 },
+			aggregate: {
+				...badge.aggregate,
+				primary: { ...badge.aggregate.primary, usedPercent: 65, resetAtMs: now + 39 * 60_000 + 50_000 },
+				secondary: { ...badge.aggregate.secondary, usedPercent: 20, resetAtMs: now + 6 * 86_400_000 + 14 * 3_600_000 },
+			},
+		}, 64, now);
+
+		const columns = rows.map((row) => rowText(row).indexOf("|"));
+		expect(columns[0]).toBeGreaterThanOrEqual(0);
+		expect(columns[1]).toBe(columns[0]);
+	});
+
 	it("omits slot counts, aggregate, and reset details in compact mode", () => {
 		const rows = formatCodexUsageBadge(badge, 63, now);
-		expect(rows.map(rowText)).toEqual(["[Plus] 5h: 40% | weekly: 25%"]);
+		expect(rows.map(rowText)).toEqual(["[Plus] 5h: 40% | 7d: 25%"]);
 	});
 
 	it("omits the aggregate when only one account has usable readings", () => {
@@ -40,12 +57,12 @@ describe("Codex usage badge formatting", () => {
 			...badge,
 			aggregate: { ...badge.aggregate, accountCount: 3, availableCount: 1 },
 		}, 80, now);
-		expect(rows.map(rowText)).toEqual(["[Plus 2/2] 5h: 40% (-1h) | weekly: 25% (-1d)"]);
+		expect(rows.map(rowText)).toEqual(["[Plus 2/2] 5h: 40% (-1h) | 7d: 25% (-1d)"]);
 	});
 
 	it("omits the badge below 32 columns and keeps it compact at 32", () => {
 		expect(formatCodexUsageBadge(badge, 31, now)).toEqual([]);
-		expect(formatCodexUsageBadge(badge, 32, now).map(rowText)).toEqual(["[Plus] 5h: 40% | weekly: 25%"]);
+		expect(formatCodexUsageBadge(badge, 32, now).map(rowText)).toEqual(["[Plus] 5h: 40% | 7d: 25%"]);
 	});
 
 	it("keeps every rendered row within its actual slot width", () => {
@@ -61,7 +78,7 @@ describe("Codex usage badge formatting", () => {
 			primary: { label: "5h", usedPercent: Number.NaN, resetAtMs: Number.POSITIVE_INFINITY },
 			secondary: { label: "weekly", usedPercent: 35 },
 		}, 32, now);
-		expect(rows.map(rowText)).toEqual(["[Codex] weekly: 35%"]);
+		expect(rows.map(rowText)).toEqual(["[Codex] 7d: 35%"]);
 		expect(JSON.stringify(rows)).not.toMatch(/NaN|Infinity/);
 	});
 });

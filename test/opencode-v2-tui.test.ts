@@ -188,11 +188,11 @@ describe("V2 accounts UI", () => {
 		messages.push({ type: "assistant", model: { providerID: "openai" } }, { type: "user" });
 		const sessionBadge = slots.get("prompt.footer.status")!.render({ sessionID: "test" })!;
 		expect(sessionBadge.width).not.toBe("100%");
-		expect(sessionBadge.width).toBe("[Plus 1/2] 5h: 60% | weekly: 40%".length);
-		expect(initialRenderedText(sessionBadge)).toBe("[Plus 1/2] 5h: 60% | weekly: 40%");
-		expect(renderedText(sessionBadge)).toBe("[Plus 1/2] 5h: 60% | weekly: 40%");
+		expect(sessionBadge.width).toBe(Math.max(32, "[Plus 1/2] 5h: 60% | 7d: 40%".length));
+		expect(initialRenderedText(sessionBadge)).toBe("[Plus 1/2] 5h: 60% | 7d: 40%");
+		expect(renderedText(sessionBadge)).toBe("[Plus 1/2] 5h: 60% | 7d: 40%");
 		const homeBadge = slots.get("home.footer.status")!.render({})!;
-		expect(renderedText(homeBadge)).toBe("[Plus 1/2] 5h: 60% | weekly: 40%");
+		expect(renderedText(homeBadge)).toBe("[Plus 1/2] 5h: 60% | 7d: 40%");
 		status.mockResolvedValueOnce({
 			text: "quota ready", details: "Quota details", showFor: "codex-models",
 			badge: { ...testBadge, primary: { label: "5h", usedPercent: 75 } },
@@ -306,7 +306,7 @@ describe("V2 accounts UI", () => {
 		expect(sidebar.children).toContain("o 2. Second");
 		expect(sidebar.children).not.toContain("\x1b");
 		const footer = renderedText(slots.get("prompt.footer.status")!.render({ sessionID: "test" }));
-		expect(footer).toBe("[Plus 1/2] 5h: 60% | weekly: 40%");
+		expect(footer).toBe("[Plus 1/2] 5h: 60% | 7d: 40%");
 		expect(footer).not.toContain("quota ready");
 	});
 
