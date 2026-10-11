@@ -34,17 +34,21 @@ describe("Codex usage badge formatting", () => {
 		const rows = formatCodexUsageBadge({
 			...badge,
 			primary: { ...badge.primary, usedPercent: 29, resetAtMs: now + 3 * 3_600_000 + 37 * 60_000 },
-			secondary: { ...badge.secondary, usedPercent: 21, resetAtMs: now + 6 * 86_400_000 + 17 * 3_600_000 },
+			secondary: { ...badge.secondary, usedPercent: 9, resetAtMs: now + 6 * 86_400_000 + 17 * 3_600_000 },
 			aggregate: {
 				...badge.aggregate,
 				primary: { ...badge.aggregate.primary, usedPercent: 65, resetAtMs: now + 39 * 60_000 + 50_000 },
-				secondary: { ...badge.aggregate.secondary, usedPercent: 20, resetAtMs: now + 6 * 86_400_000 + 14 * 3_600_000 },
+				secondary: { ...badge.aggregate.secondary, usedPercent: 100, resetAtMs: now + 6 * 86_400_000 + 14 * 3_600_000 },
 			},
 		}, 64, now);
 
-		const columns = rows.map((row) => rowText(row).indexOf("|"));
-		expect(columns[0]).toBeGreaterThanOrEqual(0);
-		expect(columns[1]).toBe(columns[0]);
+		const lines = rows.map(rowText);
+		const pipeColumns = lines.map((line) => line.indexOf("|"));
+		const secondaryResetColumns = lines.map((line, index) => line.indexOf("(", (pipeColumns[index] ?? -1) + 1));
+		expect(pipeColumns[0]).toBeGreaterThanOrEqual(0);
+		expect(pipeColumns[1]).toBe(pipeColumns[0]);
+		expect(secondaryResetColumns[0]).toBeGreaterThanOrEqual(0);
+		expect(secondaryResetColumns[1]).toBe(secondaryResetColumns[0]);
 	});
 
 	it("omits slot counts, aggregate, and reset details in compact mode", () => {

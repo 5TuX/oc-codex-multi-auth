@@ -128,14 +128,15 @@ function fits(row: CodexBadgeRow, width: number): boolean {
 	return displayWidth(rowText(row)) <= width;
 }
 
-function alignWindowSeparators(rows: CodexBadgeRow[], mutedColor: string): CodexBadgeRow[] {
+function alignWindowColumns(rows: CodexBadgeRow[], mutedColor: string): CodexBadgeRow[] {
+	// First align the inter-window pipes across rows.
 	const separators = rows.flatMap((row) => {
 		const index = row.findIndex((segment) => segment.text === " | ");
 		return index < 0 ? [] : [displayWidth(row.slice(0, index).map((segment) => segment.text).join(""))];
 	});
 	if (separators.length < 2) return rows;
 	const target = Math.max(...separators);
-	return rows.map((row) => {
+	const alignedSeparators = rows.map((row) => {
 		const index = row.findIndex((segment) => segment.text === " | ");
 		if (index < 0) return row;
 		const padding = target - displayWidth(row.slice(0, index).map((segment) => segment.text).join(""));
@@ -144,6 +145,38 @@ function alignWindowSeparators(rows: CodexBadgeRow[], mutedColor: string): Codex
 			...row.slice(0, index),
 			{ text: " ".repeat(padding), color: mutedColor },
 			...row.slice(index),
+		];
+	});
+	// Then align the secondary reset's opening parenthesis; its percentage may
+	// have a different number of digits even when the pipes already line up.
+	const resetPositions = alignedSeparators.flatMap((row) => {
+		const separatorIndex = row.findIndex((segment) => segment.text === " | ");
+		const resetIndex = row.findIndex((segment, index) => index > separatorIndex && segment.text.startsWith(" ("));
+		if (separatorIndex < 0 || resetIndex < 0) return [];
+		const reset = row[resetIndex]?.text ?? "";
+		const parenthesisOffset = reset.indexOf("(");
+		return parenthesisOffset < 0 ? [] : [
+			displayWidth(row.slice(0, resetIndex).map((segment) => segment.text).join("")) +
+				displayWidth(reset.slice(0, parenthesisOffset)),
+		];
+	});
+	if (resetPositions.length < 2) return alignedSeparators;
+	const resetTarget = Math.max(...resetPositions);
+	return alignedSeparators.map((row) => {
+		const separatorIndex = row.findIndex((segment) => segment.text === " | ");
+		const resetIndex = row.findIndex((segment, index) => index > separatorIndex && segment.text.startsWith(" ("));
+		if (separatorIndex < 0 || resetIndex < 0) return row;
+		const reset = row[resetIndex]?.text ?? "";
+		const parenthesisOffset = reset.indexOf("(");
+		if (parenthesisOffset < 0) return row;
+		const current = displayWidth(row.slice(0, resetIndex).map((segment) => segment.text).join("")) +
+			displayWidth(reset.slice(0, parenthesisOffset));
+		const padding = resetTarget - current;
+		if (padding === 0) return row;
+		return [
+			...row.slice(0, resetIndex),
+			{ text: " ".repeat(padding), color: mutedColor },
+			...row.slice(resetIndex),
 		];
 	});
 }
@@ -195,7 +228,7 @@ export function formatCodexUsageBadge(
 	if (compact) return [active];
 	for (const aggregate of [aggregateRow(badge, true, now, mutedColor), aggregateRow(badge, false, now, mutedColor)]) {
 		if (!aggregate || !fits(aggregate, width)) continue;
-		const aligned = alignWindowSeparators([active, aggregate], mutedColor);
+		const aligned = alignWindowColumns([active, aggregate], mutedColor);
 		if (aligned.every((row) => fits(row, width))) return aligned;
 	}
 	return [active];
